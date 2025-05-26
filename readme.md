@@ -15,10 +15,6 @@ This is an early warning and response system dashboard for Dengue, integrating w
 - `data/`: CSV and geojson files
 - `pipeline/`: Data cleaning and merging scripts
 - `dashboard/`: Streamlit app
+- `scripts/`: All the necessary scripts
 - `utils/`: Configuration and helper functions
 
-## 🚀 Run It
-
-```bash
-pip install -r requirements.txt
-streamlit run dashboard/app.py
