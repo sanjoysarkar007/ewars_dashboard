@@ -1,50 +1,55 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from utils.forecast import prepare_forecast_data, train_and_forecast
+
+# Import necessary libraries
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
 
-# Load dataset
-df = pd.read_csv("data/final_ewars_dataset.csv")
-
-# --- Sidebar Filters ---
-st.sidebar.header("🔍 Filter Data")
-districts = df['district'].unique().tolist()
-years = df['year'].unique().tolist()
-
-selected_districts = st.sidebar.multiselect("Select District(s)", districts, default=districts)
-selected_years = st.sidebar.multiselect("Select Year(s)", years, default=years)
-
-# Filter data
-filtered_df = df[
-    (df['district'].isin(selected_districts)) &
-    (df['year'].isin(selected_years))
-]
-
 import streamlit as st
+import pandas as pd
 
-# Unique weeks and districts
-weeks = sorted(df['week'].unique())
-weeks_with_all = ['All'] + weeks  # Add 'All' option
-
-
-# Sidebar filters
-selected_week = st.sidebar.selectbox("Select Week", weeks_with_all)
-
-
-# Filter data based on selection
-if selected_week == 'All':
-    filtered_df = df.copy()
-else:
-    filtered_df = df[df['week'] == selected_week]
-
-
-
+# --- Load dataset ---
+df = pd.read_csv("/mnt/d/dengue_ewars_dashboard/data/final_ewars_dataset.csv")
 
 # --- Dashboard Title ---
 st.title("🦟 Dengue + Weather Early Warning Dashboard")
 st.markdown("Track dengue cases with weather trends and alert signals.")
 
+# --- Top Filters ---
+st.subheader("🔍 Filter Data")
+
+# Create columns for filters
+col1, col2, col3 = st.columns([1, 1, 1])
+
+with col1:
+    districts = df['district'].unique().tolist()
+    selected_districts = st.multiselect("Select District(s)", districts, default=districts)
+
+with col2:
+    years = df['year'].unique().tolist()
+    selected_years = st.multiselect("Select Year(s)", years, default=years)
+
+with col3:
+    weeks = sorted(df['week'].unique())
+    weeks_with_all = ['All'] + weeks
+    selected_week = st.selectbox("Select Week", weeks_with_all)
+
+# --- Filter data ---
+filtered_df = df[
+    (df['district'].isin(selected_districts)) &
+    (df['year'].isin(selected_years))
+]
+
+if selected_week != 'All':
+    filtered_df = filtered_df[filtered_df['week'] == selected_week]
+
 # --- KPI Cards ---
+st.markdown("---")
 total_cases = filtered_df["weekly hospitalized"].sum()
 total_alerts = filtered_df["alert"].sum()
 avg_temp = round(filtered_df["temp"].mean(), 2)
@@ -57,6 +62,7 @@ col3.metric("Avg. temp (°C)", avg_temp)
 col4.metric("Avg. rainfall (mm)", avg_rainfall)
 
 st.markdown("---")
+
 
 # --- Line Chart: Dengue Trends ---
 st.subheader("📈 Dengue Cases Over Weeks")
@@ -72,14 +78,22 @@ fig1 = px.line(
 )
 st.plotly_chart(fig1, use_container_width=True)
 
-# --- Table: Alerts ---
 st.subheader("🚨 District-Week Level Alert Flags")
-alerts_df = filtered_df[filtered_df["alert"] == True][["district", "year", "week", "weekly hospitalized", "temp", "rainfall"]]
-st.dataframe(alerts_df.sort_values(by=["district", "year", "week"]))
 
-# --- Expandable Raw Data View ---
-with st.expander("📄 View Raw Merged Data"):
-    st.dataframe(filtered_df)
+# Filter only necessary columns
+alerts_df = filtered_df[["district", "year", "week", "weekly hospitalized", "temp", "rainfall", "alert"]]
+
+# Custom styling function
+def highlight_alert(val):
+    color = 'red' if val is True else 'green'
+    return f'background-color: {color}; color: white'
+
+# Apply style only to 'alert' column
+styled_df = alerts_df.sort_values(by=["district", "year", "week"]).style.applymap(highlight_alert, subset=['alert'])
+
+st.write(styled_df)
+
+
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -193,12 +207,13 @@ st.plotly_chart(fig2, use_container_width=True)
 
 import geopandas as gpd
 import folium
+import streamlit as st
 from streamlit_folium import folium_static
 
 # Load spatial data and latest case data
 @st.cache_data
 def load_geo():
-    return gpd.read_file("data/bangladesh.geojson")
+    return gpd.read_file("/mnt/d/dengue_ewars_dashboard/data/bangladesh.geojson")
 
 geo_df = load_geo()
 
@@ -219,11 +234,22 @@ choropleth = folium.Choropleth(
     fill_color="YlOrRd",
     fill_opacity=0.7,
     line_opacity=0.2,
-    legend_name="Weekly Dengue weekly hospitalized",
+    legend_name="Weekly Dengue hospitalized cases",
     highlight=True,
 ).add_to(m)
 
-# Add popups with basic info
+# Add tooltips with hospitalized case numbers
+geojson = folium.GeoJson(
+    map_df,
+    tooltip=folium.GeoJsonTooltip(
+        fields=["district", "weekly hospitalized"],
+        aliases=["District", "Hospitalized Cases"],
+        localize=True,
+        sticky=True
+    )
+).add_to(m)
+
+# Add popups with detailed info
 for _, row in map_df.iterrows():
     popup_text = f"""
     <b>{row['district'].title()}</b><br>
@@ -239,26 +265,10 @@ for _, row in map_df.iterrows():
         icon=folium.Icon(color='blue', icon='info-sign')
     ).add_to(m)
 
-folium_static(m)
-
-
-
-# Add district labels
-for _, r in map_df.iterrows():
-    tooltip_text = f"{r['district']}: {r['weekly hospitalized']} cases"
-    folium.Tooltip(tooltip_text).add_to(folium.GeoJson(r["geometry"]))
-
 folium.LayerControl().add_to(m)
+
+# Display the map
 folium_static(m, width=900, height=600)
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-heat_data = df.pivot_table(index='district', columns='week', values='alert', aggfunc='max')
-plt.figure(figsize=(10, 20))
-sns.heatmap(heat_data, cmap="Reds", cbar=True, linewidths=0.5, linecolor='gray')
-
-st.pyplot(plt)
 
 
 import plotly.graph_objects as go
@@ -274,7 +284,7 @@ fig.add_trace(go.Scatter(
 
 # Temperature
 fig.add_trace(go.Scatter(
-    x=district_df['week'], y=district_df['rainfall'],
+    x=district_df['week'], y=district_df['temp'],
     mode='lines+markers', name='Temperature',
     yaxis='y2', line=dict(color='blue')
 ))
@@ -290,4 +300,28 @@ st.plotly_chart(fig)
 
 
 
+from utils.forecast import prepare_forecast_data, train_and_forecast
+import plotly.graph_objects as go
+
+# Create forecast section in Streamlit
+st.header("🔮 Forecasting Dengue Cases")
+
+# Sidebar filter for district
+forecast_district = st.selectbox("Select District for Forecast", df['district'].unique())
+
+# Number of weeks to forecast
+num_weeks = st.slider("Number of Weeks to Forecast", 4, 24, step=4, value=12)
+
+# Run forecast
+df_prophet = prepare_forecast_data(df, forecast_district)
+forecast = train_and_forecast(df_prophet, periods=num_weeks)
+
+# Plot using Plotly
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=df_prophet['ds'], y=df_prophet['y'], mode='lines+markers', name='Actual Cases'))
+fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines', name='Forecast'))
+fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_upper'], mode='lines', name='Upper Bound', line=dict(dash='dot')))
+fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_lower'], mode='lines', name='Lower Bound', line=dict(dash='dot')))
+
+st.plotly_chart(fig, use_container_width=True)
 
