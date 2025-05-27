@@ -14,7 +14,7 @@ import streamlit as st
 import pandas as pd
 
 # --- Load dataset ---
-df = pd.read_csv("/mnt/d/dengue_ewars_dashboard/data/final_ewars_dataset.csv")
+df = pd.read_csv("data/final_ewars_dataset.csv")
 
 # --- Dashboard Title ---
 st.title("🦟 Dengue + Weather Early Warning Dashboard")
@@ -213,7 +213,7 @@ from streamlit_folium import folium_static
 # Load spatial data and latest case data
 @st.cache_data
 def load_geo():
-    return gpd.read_file("/mnt/d/dengue_ewars_dashboard/data/bangladesh.geojson")
+    return gpd.read_file("data/bangladesh.geojson")
 
 geo_df = load_geo()
 
