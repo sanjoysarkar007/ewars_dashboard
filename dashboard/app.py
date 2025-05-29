@@ -152,16 +152,7 @@ X = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
 y = train_df['weekly hospitalized']
 poisson_model = sm.GLM(y, X, family=sm.families.Poisson()).fit()
 
-# === Poisson Forecast ===
-st.header("📊 Forecast (Poisson GLM)")
 
-district_filter = st.selectbox("Select District", df['district'].unique())
-train_df = df[df['district'] == district_filter][['week', 'year', 'temp', 'rainfall', 'humidity', 'weekly hospitalized']]
-train_df = train_df.replace([np.inf, -np.inf], np.nan).dropna()
-
-X = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
-y = train_df['weekly hospitalized']
-poisson_model = sm.GLM(y, X, family=sm.families.Poisson()).fit()
 
 st.markdown("### 🔮 Forecast Input")
 col1, col2, col3 = st.columns(3)
