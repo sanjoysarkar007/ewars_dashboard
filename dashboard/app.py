@@ -152,14 +152,32 @@ X = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
 y = train_df['weekly hospitalized']
 poisson_model = sm.GLM(y, X, family=sm.families.Poisson()).fit()
 
-st.sidebar.subheader("🔮 Input for Poisson Forecast")
-forecast_week = st.sidebar.selectbox("Forecast Week", sorted(df['week'].unique()))
-forecast_year = st.sidebar.selectbox("Forecast Year", sorted(df['year'].unique()) + [2025])
-forecast_temp = st.sidebar.slider("Temp (°C)", 20, 40, 30)
-forecast_rain = st.sidebar.slider("Rainfall (mm)", 0, 300, 50)
-forecast_humidity = st.sidebar.slider("Humidity (%)", 30, 100, 80)
+# === Poisson Forecast ===
+st.header("📊 Forecast (Poisson GLM)")
 
-if st.sidebar.button("Run Forecast"):
+district_filter = st.selectbox("Select District", df['district'].unique())
+train_df = df[df['district'] == district_filter][['week', 'year', 'temp', 'rainfall', 'humidity', 'weekly hospitalized']]
+train_df = train_df.replace([np.inf, -np.inf], np.nan).dropna()
+
+X = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
+y = train_df['weekly hospitalized']
+poisson_model = sm.GLM(y, X, family=sm.families.Poisson()).fit()
+
+st.markdown("### 🔮 Forecast Input")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    forecast_week = st.selectbox("Forecast Week", sorted(df['week'].unique()))
+    forecast_year = st.selectbox("Forecast Year", sorted(df['year'].unique()) + [2025])
+
+with col2:
+    forecast_temp = st.slider("Temp (°C)", 20, 40, 30)
+    forecast_rain = st.slider("Rainfall (mm)", 0, 300, 50)
+
+with col3:
+    forecast_humidity = st.slider("Humidity (%)", 30, 100, 80)
+
+if st.button("Run Poisson Forecast"):
     input_df = pd.DataFrame([{
         'const': 1,
         'week': forecast_week,
@@ -168,6 +186,6 @@ if st.sidebar.button("Run Forecast"):
         'rainfall': forecast_rain,
         'humidity': forecast_humidity
     }])
+    
     prediction = poisson_model.predict(input_df)[0]
-    st.success(f"📌 Predicted Dengue Cases in {district_filter}: {prediction:.2f}")
-
+    st.success(f"📌 Predicted Dengue Cases in **{district_filter}**: **{int(round(prediction))}**")
