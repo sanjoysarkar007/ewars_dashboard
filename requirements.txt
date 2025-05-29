@@ -5,3 +5,4 @@ plotly
 geopandas
 folium
 streamlit-folium
+prophet
