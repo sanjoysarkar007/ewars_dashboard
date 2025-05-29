@@ -19,7 +19,7 @@ from streamlit_folium import folium_static
 
 # === Load Data ===
 
-df = pd.read_csv("..data/final_ewars_dataset.csv")
+df = pd.read_csv("data/final_ewars_dataset.csv")
 
 # === Title & Description ===
 st.title("🦟 Dengue & Weather Early Warning Dashboard")
@@ -97,7 +97,7 @@ st.plotly_chart(fig2, use_container_width=True)
 
 st.subheader("🗺️ District-wise Dengue Cases (Latest Week)")
 @st.cache_data
-def load_geo(): return gpd.read_file("../data/bangladesh.geojson")
+def load_geo(): return gpd.read_file("data/bangladesh.geojson")
 geo_df = load_geo()
 latest = df[df[["year", "week"]].apply(tuple, axis=1) == df[["year", "week"]].apply(tuple, axis=1).max()]
 map_df = geo_df.merge(latest, left_on="NAME_3", right_on="district")
