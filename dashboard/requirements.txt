@@ -7,4 +7,3 @@ folium
 streamlit-folium
 prophet
 statsmodels
-sklearn
