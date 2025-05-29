@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import geopandas as gpd
 import folium
 from streamlit_folium import folium_static
-import statsmodels.api as sm
+
 
 # === Load Data ===
 
@@ -127,6 +127,7 @@ for _, row in map_df.iterrows():
 
 folium_static(m, width=900, height=600)
 
+import statsmodels.api as sm
 # === Prophet Forecast ===
 
 st.header("📈 Prophet Forecast")
