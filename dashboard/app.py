@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import geopandas as gpd
 import folium
 from streamlit_folium import folium_static
-
+import statsmodels.api as sm
 
 # === Load Data ===
 
@@ -127,7 +127,6 @@ for _, row in map_df.iterrows():
 
 folium_static(m, width=900, height=600)
 
-import statsmodels.api as sm
 # === Prophet Forecast ===
 
 st.header("📈 Prophet Forecast")
@@ -142,6 +141,41 @@ fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_upper'], name='Upper
 fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_lower'], name='Lower', line=dict(dash='dot')))
 st.plotly_chart(fig, use_container_width=True)
 
+from prophet.diagnostics import cross_validation, performance_metrics
+
+# --- Prophet Forecast Accuracy Evaluation ---
+st.subheader("📊 Evaluate Prophet Forecast Accuracy")
+
+def evaluate_prophet_model(model):
+    with st.spinner("Running cross-validation... This may take a moment."):
+        try:
+            df_cv = cross_validation(
+                model=model,
+                initial='365 days',   # Initial training period
+                period='30 days',     # Retrain every 30 days
+                horizon='90 days'     # Forecast horizon
+            )
+            df_perf = performance_metrics(df_cv)
+
+            st.success("✅ Model evaluation completed.")
+           # Display only available columns safely
+            available_cols = [col for col in ['horizon', 'mae', 'rmse', 'coverage'] if col in df_perf.columns]
+            st.dataframe(df_perf[available_cols])
+
+
+            st.markdown("**Legend:**")
+            st.markdown("- `MAE`: Mean Absolute Error")
+            st.markdown("- `RMSE`: Root Mean Squared Error")
+            st.markdown("- `MAPE`: Mean Absolute Percentage Error")
+            st.markdown("- `Coverage`: % of predictions within confidence interval")
+        except Exception as e:
+            st.error(f"❌ Error during model evaluation: {e}")
+
+# Button to trigger evaluation
+if st.button("Run Prophet Model Evaluation"):
+    evaluate_prophet_model(forecast.model)
+
+
 # === Poisson Forecast ===
 
 st.header("📊 Forecast (Poisson GLM)")
@@ -151,8 +185,6 @@ train_df = train_df.replace([np.inf, -np.inf], np.nan).dropna()
 X = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
 y = train_df['weekly hospitalized']
 poisson_model = sm.GLM(y, X, family=sm.families.Poisson()).fit()
-
-
 
 st.markdown("### 🔮 Forecast Input")
 col1, col2, col3 = st.columns(3)
@@ -180,3 +212,56 @@ if st.button("Run Poisson Forecast"):
     
     prediction = poisson_model.predict(input_df)[0]
     st.success(f"📌 Predicted Dengue Cases in **{district_filter}**: **{int(round(prediction))}**")
+# === Poisson Model Evaluation ===
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+st.subheader("📊 Poisson GLM Model Evaluation")
+
+# Prepare data
+X_all = sm.add_constant(train_df[['week', 'year', 'temp', 'rainfall', 'humidity']])
+y_all = train_df['weekly hospitalized']
+
+# Split data into train/test
+split_index = int(0.8 * len(train_df))
+X_train, X_test = X_all.iloc[:split_index], X_all.iloc[split_index:]
+y_train, y_test = y_all.iloc[:split_index], y_all.iloc[split_index:]
+
+# Train Poisson model
+poisson_model = sm.GLM(y_train, X_train, family=sm.families.Poisson()).fit()
+
+# Predict
+y_pred = poisson_model.predict(X_test)
+
+# Evaluation Metrics
+mae = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
+
+st.write(f"📌 MAE: `{mae:.2f}`")
+st.write(f"📌 RMSE: `{rmse:.2f}`")
+st.write(f"📌 R² Score: `{r2:.2f}`")
+
+# Actual vs Predicted Plot
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=list(range(len(y_test))),
+    y=y_test,
+    mode='lines+markers',
+    name='Actual',
+    line=dict(color='green')
+))
+fig.add_trace(go.Scatter(
+    x=list(range(len(y_test))),
+    y=y_pred,
+    mode='lines+markers',
+    name='Predicted',
+    line=dict(color='red', dash='dash')
+))
+fig.update_layout(
+    title="Actual vs Predicted Dengue Cases (Poisson GLM)",
+    xaxis_title="Test Sample Index",
+    yaxis_title="Hospitalized Cases",
+    legend=dict(orientation="h", y=-0.3),
+    height=450
+)
+st.plotly_chart(fig, use_container_width=True)
