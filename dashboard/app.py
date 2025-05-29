@@ -22,7 +22,6 @@ import statsmodels.api as sm
 df = pd.read_csv("/mnt/d/dengue_ewars_dashboard/data/final_ewars_dataset.csv")
 
 # === Title & Description ===
-
 st.title("🦟 Dengue & Weather Early Warning Dashboard")
 st.markdown("Monitor dengue outbreaks with integrated weather trends, spatial mapping, and predictive analytics.")
 
