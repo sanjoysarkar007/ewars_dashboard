@@ -22,7 +22,6 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 df = pd.read_csv("data/final_ewars_dataset.csv")
 =======
-df = pd.read_csv("/mnt/d/dengue_ewars_dashboard/data/final_ewars_dataset.csv")
 >>>>>>> feat: Improved forecast accuracy by refining prediction model in utils/forecast.py
 
 # === Title & Description ===
