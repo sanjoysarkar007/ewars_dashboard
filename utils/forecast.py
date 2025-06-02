@@ -17,11 +17,11 @@ def prepare_forecast_data(df, district):
 
     return df_prophet
 
-def train_and_forecast(df_prophet, periods=12):
+def train_and_forecast(df, periods=12):
     model = Prophet()
-    model.fit(df_prophet)
-
+    model.fit(df)
     future = model.make_future_dataframe(periods=periods, freq='W')
     forecast = model.predict(future)
-
+    forecast.model = model  # Attach model to forecast DataFrame
     return forecast
+
