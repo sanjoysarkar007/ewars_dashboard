@@ -8,3 +8,5 @@ streamlit-folium
 prophet
 statsmodels
 scikit-learn
+xgboost
+lightgbm
